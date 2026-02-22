@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=11" />
+<title>HTA Timer</title>
+
+<hta:application
+  border="thin"
+  caption="yes"
+  showintaskbar="yes"
+  singleinstance="yes"
+/>
+
+<style>
+body{
+    font-family: monospace;
+    text-align:center;
+    background:#000;
+    color:#0f0;
+}
+
+#topButtons{
+    margin-top:15px;
+    margin-bottom:20px;
+}
+
+#display{
+    font-size:80px;
+    padding:30px;
+}
+
+button{
+    padding:6px 15px;
+    margin:5px;
+}
+
+.colorBtn{
+    width:40px;
+    height:30px;
+    margin:3px;
+    border:2px solid #444;
+    cursor:pointer;
+}
+
+.selected{
+    border:3px solid yellow;
+}
+
+</style>
+
+<script>
+
+var totalMs=0;
+var remainingMs=0;
+var interval=null;
+var lastTime=0;
+var currentOutlineColor="#ffffff";
+
+/* ===== Timer ===== */
+
+function parseTime(str){
+    var p=str.split(":");
+    if(p.length!=3) return 0;
+    return ((+p[0])*3600+(+p[1])*60+(+p[2]))*1000;
+}
+
+function formatTime(ms){
+    var h=Math.floor(ms/3600000); ms%=3600000;
+    var m=Math.floor(ms/60000); ms%=60000;
+    var s=Math.floor(ms/1000);
+    var ms2=ms%1000;
+    return pad(h,2)+":"+pad(m,2)+":"+pad(s,2)+":"+pad(ms2,3);
+}
+
+function pad(n,d){
+    var s="000"+n;
+    return s.substr(s.length-d);
+}
+
+function startTimer(){
+    if(interval) return;
+
+    if(remainingMs<=0){
+        totalMs=parseTime(timeInput.value);
+        remainingMs=totalMs;
+    }
+    if(remainingMs<=0) return;
+
+    lastTime=new Date().getTime();
+
+    interval=setInterval(function(){
+        var now=new Date().getTime();
+        var delta=now-lastTime;
+        lastTime=now;
+        remainingMs-=delta;
+
+        if(remainingMs<=0){
+            remainingMs=0;
+            stopTimer();
+            beep();
+        }
+
+        display.innerText=formatTime(remainingMs);
+
+    },10);
+}
+
+function stopTimer(){
+    if(interval){
+        clearInterval(interval);
+        interval=null;
+    }
+}
+
+function resetTimer(){
+    stopTimer();
+    totalMs=parseTime(timeInput.value);
+    remainingMs=totalMs;
+    display.innerText=formatTime(remainingMs);
+}
+
+/* ===== Sound ===== */
+
+function beep(){
+    try{
+        var wmp=new ActiveXObject("WMPlayer.OCX");
+        wmp.settings.volume=volumeSlider.value;
+        wmp.URL="C:\\Windows\\Media\\Windows Notify.wav";
+        wmp.controls.play();
+    }catch(e){}
+}
+
+/* ===== Color ===== */
+
+function clearSelection(group){
+    var btns=document.getElementsByClassName(group);
+    for(var i=0;i<btns.length;i++){
+        btns[i].className="colorBtn "+group;
+    }
+}
+
+function setBG(color,btn){
+    display.style.backgroundColor=color;
+    clearSelection("bgGroup");
+    btn.className+=" selected";
+}
+
+function setText(color,btn){
+    display.style.color=color;
+    clearSelection("textGroup");
+    btn.className+=" selected";
+}
+
+function setOutline(color,btn){
+    currentOutlineColor=color;
+    clearSelection("outlineGroup");
+    btn.className+=" selected";
+    applyOutline();
+}
+
+function applyOutline(){
+    if(outlineChk.checked){
+        display.style.textShadow=
+            "-2px -2px 0 "+currentOutlineColor+","+
+            "2px -2px 0 "+currentOutlineColor+","+
+            "-2px 2px 0 "+currentOutlineColor+","+
+            "2px 2px 0 "+currentOutlineColor;
+    }else{
+        display.style.textShadow="none";
+    }
+}
+
+window.onload=function(){
+    resetTimer();
+}
+
+</script>
+</head>
+
+<body>
+
+<!-- 🔥 上部操作ボタン -->
+<div id="topButtons">
+    <button onclick="startTimer()">開始</button>
+    <button onclick="stopTimer()">停止</button>
+    <button onclick="resetTimer()">リセット</button>
+</div>
+
+<!-- 🔥 表示 -->
+<div id="display">00:00:05:000</div>
+
+<hr>
+
+<div>
+時刻:
+<input type="text" id="timeInput" value="00:00:05">
+</div>
+
+<div>
+音量:
+<input type="range" id="volumeSlider" min="0" max="100" value="50">
+</div>
+
+<hr>
+
+<div>
+背景色:
+<button class="colorBtn bgGroup" style="background:#00ff00" onclick="setBG('#00ff00',this)"></button>
+<button class="colorBtn bgGroup" style="background:#ff0000" onclick="setBG('#ff0000',this)"></button>
+<button class="colorBtn bgGroup" style="background:#0000ff" onclick="setBG('#0000ff',this)"></button>
+<button class="colorBtn bgGroup" style="background:#000000" onclick="setBG('#000000',this)"></button>
+<button class="colorBtn bgGroup" style="background:#ffffff" onclick="setBG('#ffffff',this)"></button>
+</div>
+
+<div>
+文字色:
+<button class="colorBtn textGroup" style="background:#00ff00" onclick="setText('#00ff00',this)"></button>
+<button class="colorBtn textGroup" style="background:#ff0000" onclick="setText('#ff0000',this)"></button>
+<button class="colorBtn textGroup" style="background:#0000ff" onclick="setText('#0000ff',this)"></button>
+<button class="colorBtn textGroup" style="background:#000000" onclick="setText('#000000',this)"></button>
+<button class="colorBtn textGroup" style="background:#ffffff" onclick="setText('#ffffff',this)"></button>
+</div>
+
+<div>
+縁ON <input type="checkbox" id="outlineChk" checked onclick="applyOutline()">
+縁色:
+<button class="colorBtn outlineGroup" style="background:#ffffff" onclick="setOutline('#ffffff',this)"></button>
+<button class="colorBtn outlineGroup" style="background:#00ff00" onclick="setOutline('#00ff00',this)"></button>
+<button class="colorBtn outlineGroup" style="background:#ff0000" onclick="setOutline('#ff0000',this)"></button>
+<button class="colorBtn outlineGroup" style="background:#0000ff" onclick="setOutline('#0000ff',this)"></button>
+<button class="colorBtn outlineGroup" style="background:#000000" onclick="setOutline('#000000',this)"></button>
+</div>
+
+</body>
+</html>
